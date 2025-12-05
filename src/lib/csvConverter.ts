@@ -44,7 +44,8 @@ export interface ConversionResult {
 }
 
 // Required source column headers (case-insensitive match)
-const REQUIRED_COLUMNS = ['Q Type', 'Q Text', 'Question', 'Answer', 'Answer Match', 'Notes'];
+// Note: 'Question' column is optional - grouping is done by Q Text only
+const REQUIRED_COLUMNS = ['Q Type', 'Q Text', 'Answer', 'Answer Match', 'Notes'];
 
 /**
  * Parse CSV string into array of objects
@@ -149,14 +150,14 @@ export function loadSourceRows(rows: Record<string, string>[]): SourceRow[] {
 }
 
 /**
- * Group rows by (Q Text, Question) pair
- * Rows are grouped by trimmed values but original text is preserved
+ * Group rows by Q Text only
+ * The Question column is ignored for grouping (it's optional/redundant in source data)
  */
 export function groupQuestions(rows: SourceRow[]): { groups: QuestionGroup[]; warnings: string[]; skipped: number } {
   const warnings: string[] = [];
   let skipped = 0;
   
-  // Group by trimmed (qText, question) key
+  // Group by trimmed qText only
   const groupMap = new Map<string, QuestionGroup>();
   
   for (const row of rows) {
@@ -168,10 +169,8 @@ export function groupQuestions(rows: SourceRow[]): { groups: QuestionGroup[]; wa
       continue;
     }
     
-    // Create group key from trimmed values
-    const keyQText = row.qText.trim();
-    const keyQuestion = row.question.trim();
-    const groupKey = `${keyQText}|||${keyQuestion}`;
+    // Create group key from trimmed Q Text only
+    const groupKey = row.qText.trim();
     
     // Determine if correct
     const isCorrect = row.answerMatch.trim().toLowerCase() === 'correct';
@@ -179,7 +178,7 @@ export function groupQuestions(rows: SourceRow[]): { groups: QuestionGroup[]; wa
     if (!groupMap.has(groupKey)) {
       groupMap.set(groupKey, {
         qText: row.qText,
-        question: row.question,
+        question: '', // No longer used for grouping
         options: [],
       });
     }
@@ -235,8 +234,8 @@ export function generateD2LCSV(groups: QuestionGroup[], points: number = 1): { c
     // NewQuestion row
     lines.push('NewQuestion,MC,,,');
     
-    // QuestionText row - concatenate Q Text and Question with single space
-    const fullText = `${group.qText.trim()} ${group.question.trim()}`.trim();
+    // QuestionText row - use Q Text only (Question column is optional/ignored)
+    const fullText = group.qText.trim();
     lines.push(`QuestionText,${escapeCSV(fullText)},,,`);
     
     // Points row
