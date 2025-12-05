@@ -156,6 +156,10 @@ export function groupQuestions(rows: SourceRow[]): { groups: QuestionGroup[]; wa
   const warnings: string[] = [];
   let skipped = 0;
   
+  // Debug: log total rows and unique Q # values
+  const uniqueQNumbers = new Set(rows.map(r => r.qNumber.trim()).filter(q => q));
+  console.log(`Total rows: ${rows.length}, Unique Q# values: ${uniqueQNumbers.size}`);
+  
   // Group by Q # (question number) to ensure each question is unique
   const groupMap = new Map<string, QuestionGroup>();
   
