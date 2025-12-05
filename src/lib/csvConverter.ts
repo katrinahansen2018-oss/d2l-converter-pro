@@ -150,17 +150,24 @@ export function loadSourceRows(rows: Record<string, string>[]): SourceRow[] {
 }
 
 /**
- * Group rows by Q Text only
- * The Question column is ignored for grouping (it's optional/redundant in source data)
+ * Group rows by Q # (Question Number) to prevent merging questions with identical Q Text
  */
 export function groupQuestions(rows: SourceRow[]): { groups: QuestionGroup[]; warnings: string[]; skipped: number } {
   const warnings: string[] = [];
   let skipped = 0;
   
-  // Group by trimmed qText only
+  // Group by Q # (question number) to ensure each question is unique
   const groupMap = new Map<string, QuestionGroup>();
   
   for (const row of rows) {
+    // Validate Q # exists
+    const qNumber = row.qNumber.trim();
+    if (!qNumber) {
+      warnings.push(`Row with Q Text "${row.qText.substring(0, 30)}..." has no Q # - skipped`);
+      skipped++;
+      continue;
+    }
+    
     // Validate question type
     const qType = row.qType.trim().toUpperCase();
     if (qType !== 'MC') {
@@ -169,8 +176,8 @@ export function groupQuestions(rows: SourceRow[]): { groups: QuestionGroup[]; wa
       continue;
     }
     
-    // Create group key from trimmed Q Text only
-    const groupKey = row.qText.trim();
+    // Create group key from Q # (unique per question)
+    const groupKey = qNumber;
     
     // Determine if correct
     const isCorrect = row.answerMatch.trim().toLowerCase() === 'correct';
